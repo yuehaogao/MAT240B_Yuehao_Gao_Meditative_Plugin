@@ -5,20 +5,29 @@
 juce::AudioProcessorValueTreeState::ParameterLayout parameters() {
   std::vector<std::unique_ptr<juce::RangedAudioParameter>> parameter_list;
 
-  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
-      ParameterID{"gain", 1}, "Gain", -60.0, 0.0, -60.0));
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(     // using
+      ParameterID{"gain", 1}, "Gain", -60.0, 0.0, -60.0));  
 
   parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
       ParameterID{"frequency", 1}, "Frequency", 0.0, 127.0, 60.0));
 
-  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
-      ParameterID{"distortion", 1}, "Distortion", 0.0, 1.0, 0.0));
+  // parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+  //     ParameterID{"distortion", 1}, "Distortion", 0.0, 1.0, 0.0));
 
-  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
-      ParameterID{"rate", 1}, "Rate", 0.0, 1.0, 0.0));
+  // parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+  //     ParameterID{"rate", 1}, "Rate", 0.0, 1.0, 0.0));
 
-  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(     // using
       ParameterID{"chordRate", 1}, "Chord Change Rate", 3.0f, 9.0f, 5.0f));
+      
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+        ParameterID{"sineMix", 1}, "Sine Mix", 0.0f, 1.0f, 0.3f));
+    
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+        ParameterID{"sawMix", 1}, "Saw Mix", 0.0f, 1.0f, 0.5f));
+    
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+        ParameterID{"triMix", 1}, "Tri Mix", 0.0f, 1.0f, 0.2f));
 
   return {parameter_list.begin(), parameter_list.end()};
 }
@@ -183,40 +192,46 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     buffer.clear(i, 0, buffer.getNumSamples());
 
   
-  float v = apvts.getParameter("gain")->getValue();  // (0, 1)
+  float gainValue = apvts.getParameter("gain")->getValue();                // using
   float f = apvts.getParameter("frequency")->getValue();
-  float t = apvts.getParameter("distortion")->getValue();
-  float r = apvts.getParameter("rate")->getValue();
-  float cr = apvts.getParameter("chordRate")->getValue();
+  // float t = apvts.getParameter("distortion")->getValue();
+  // float r = apvts.getParameter("rate")->getValue();  
+  float chordChangingRate = apvts.getParameter("chordRate")->getValue();   // using
+  float sineMix = apvts.getParameter("sineMix")->getValue();
+  float sawMix = apvts.getParameter("sawMix")->getValue();
+  float triMix = apvts.getParameter("triMix")->getValue();
+
+  synth.setMixingRatios(sineMix, sawMix, triMix);
   
 
   // auto thing = this->buffer.exchange(nullptr, std::memory_order_acq_rel);
 
   // ramp.frequency(ky::mtof(f * 127));
-  timer.frequency(7 * r);
+  //timer.frequency(7 * r);
   ramp.frequency(0.3f);
 
   // 🎚️ Get user-defined chord change rate from slider
-  chordChangeInterval = apvts.getParameter("chordRate")->getValue() + 0.5; 
+  chordChangeInterval = chordChangingRate + 0.5; 
   //std::cout << "Chord Change Interval: " << chordChangeInterval << " seconds" << std::endl;
-
 
   // 🎵 Chord Progression Logic: Switch chords automatically
   chordChangeTimer += (buffer.getNumSamples() / getSampleRate()) / 6.0f;
-  std::cout << "Chord Change Interval: " << chordChangeInterval << " seconds" << std::endl;
+  //std::cout << "Chord Change Interval: " << chordChangeInterval << " seconds" << std::endl;
   
   
   if (chordChangeTimer >= chordChangeInterval) {
       chordChangeTimer = 0; // Reset timer
-      currentChordIndex = (currentChordIndex + 1) % 3; // Cycle through 3 chords
+      currentChordIndex = (currentChordIndex + 1) % 4; // Cycle through 4 chords
 
       // Set the new chord based on index
       if (currentChordIndex == 0) {
           synth.setPentatonicChord(220.0f); // A2 pentatonic
       } else if (currentChordIndex == 1) {
           synth.setPentatonicChord(164.8f); // E2 pentatonic
-      } else {
+      } else if (currentChordIndex == 2) {
           synth.setPentatonicChord(146.8f); // D2 pentatonic
+      } else {
+          synth.setPentatonicChord(196.0f); // G2 pentatonic
       }
   }
 
@@ -240,7 +255,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     // ✅ Apply gain (volume control)
     
     // sample *= v; 
-    sample *= apvts.getParameter("gain")->getValue(); 
+    sample *= gainValue; 
 
     // ✅ Send to Left & Right Channels
     leftChannel[i] = sample;
@@ -252,8 +267,6 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   juce::dsp::ProcessContextReplacing<float> context(block);
   convolution.process(context);
 
-  //juce::dsp::AudioBlock<float> block(buffer);
-  //convolution.process(juce::dsp::ProcessContextReplacing<float>(block));
 }
 
 void AudioPluginAudioProcessor::setBuffer(
