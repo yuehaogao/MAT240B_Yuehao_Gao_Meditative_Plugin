@@ -11,35 +11,6 @@ AdditiveSynth::AdditiveSynth() {
 }
 
 
-// float AdditiveSynth::process(float sampleRate) {
-//     float sample = 0.0f;
-
-//     for (auto& h : harmonics) {
-//         // 🎵 Apply a phase shift for movement
-//         float phaseShift = std::sin(phase * juce::MathConstants<float>::twoPi * 0.05f) * 0.1f;
-//         float modulatedFreq = h.frequency * (1.0f + phaseShift);
-
-//         float phaseVal = phase * juce::MathConstants<float>::twoPi * modulatedFreq;
-        
-//         // 🎛️ Blend multiple waveforms
-//         float sineWave = std::sin(phaseVal);
-//         float sawWave = 2.0f * (phase - std::floor(phase + 0.5f)); // Sawtooth
-//         float triWave = std::abs(4.0f * (phase - std::floor(phase + 0.5f)) - 1.0f); // Triangle
-        
-//         // 🏗️ Mix waves to create a richer timbre
-//         float mixedWave = (0.4f * sineWave) + (0.4f * sawWave) + (0.2f * triWave);
-//         sample += mixedWave * h.amplitude;
-//     }
-    
-//     phase += 1.0f / sampleRate;
-//     if (phase >= 1.0f) phase -= 1.0f; // Keep phase within bounds
-
-//     // 🎛️ Apply a soft low-pass filter
-//     sample = lowPassFilter.processSample(sample);
-
-//     return sample;
-// }
-
 // Initialize ADSR Envelope
 void AdditiveSynth::initializeADSR() {
     adsrParams.attack = 0.8f;   // Slow fade-in (pad-like)
@@ -84,8 +55,9 @@ float AdditiveSynth::process(float sampleRate) {
         float triWave = std::abs(4.0f * (h.phase - std::floor(h.phase + 0.5f)) - 1.0f);  // Triangle
 
         // 🏗️ Improved Mixing Strategy
-        float mixedWave = (0.3f * sineWave) + (0.5f * sawWave) + (0.2f * triWave);
-        
+        // float mixedWave = (0.3f * sineWave) + (0.5f * sawWave) + (0.2f * triWave);
+        float mixedWave = (sineMix * 0.33 * sineWave) + (sawMix * 0.33 * sawWave) + (triMix * 0.33 * triWave);
+
         sample += mixedWave * h.amplitude;
     }
 
@@ -98,10 +70,24 @@ float AdditiveSynth::process(float sampleRate) {
     // ✅ Apply Low-Pass Filter (Ensure Smoother Sound)
     sample = lowPassFilter.processSample(0, sample);
 
+    sample *= 9.0f;
+
+    if (sample >= 1.0) {
+        sample = 1.0;
+    }
+    if (sample <= -1.0) {
+        sample = -1.0;
+    }
+
     return sample;
 }
 
 
+void AdditiveSynth::setMixingRatios(float sine, float saw, float tri) {
+    sineMix = sine;
+    sawMix = saw;
+    triMix = tri;
+}
 
 
 
