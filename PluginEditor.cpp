@@ -14,21 +14,33 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor(
   attachment.push_back(
       std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
           processorRef.apvts, "frequency", frequencySlider));
-  attachment.push_back(
-      std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-          processorRef.apvts, "distortion", distortionSlider));
-  attachment.push_back(
-      std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-          processorRef.apvts, "rate", rateSlider));
+  // attachment.push_back(
+  //     std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+  //         processorRef.apvts, "distortion", distortionSlider));
+  // attachment.push_back(
+  //     std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+  //         processorRef.apvts, "rate", rateSlider));
   attachment.push_back(
       std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
           processorRef.apvts, "chordRate", chordRateSlider));
+  attachment.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+          processorRef.apvts, "sineMix", sineMixSlider));
+  attachment.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+          processorRef.apvts, "sawMix", sawMixSlider));
+  attachment.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+          processorRef.apvts, "triMix", triMixSlider));
+        
+        
+          
 
   addAndMakeVisible(gainSlider);
   addAndMakeVisible(frequencySlider);
-  addAndMakeVisible(distortionSlider);
-  addAndMakeVisible(rateSlider);
+  // addAndMakeVisible(distortionSlider);
+  // addAndMakeVisible(rateSlider);
   addAndMakeVisible(chordRateSlider);
+  addAndMakeVisible(sineMixSlider);
+  addAndMakeVisible(sawMixSlider);
+  addAndMakeVisible(triMixSlider);
 
   chooser = std::make_unique<juce::FileChooser>(
       "Select a file to open...",
@@ -77,7 +89,10 @@ void AudioPluginAudioProcessorEditor::resized() {
   openButton.setBounds(area.removeFromTop(height));
   gainSlider.setBounds(area.removeFromTop(height));
   frequencySlider.setBounds(area.removeFromTop(height));
-  distortionSlider.setBounds(area.removeFromTop(height));
-  rateSlider.setBounds(area.removeFromTop(height));
+  // distortionSlider.setBounds(area.removeFromTop(height));
+  // rateSlider.setBounds(area.removeFromTop(height));
   chordRateSlider.setBounds(area.removeFromTop(height));
+  sineMixSlider.setBounds(area.removeFromTop(height));
+  sawMixSlider.setBounds(area.removeFromTop(height));
+  triMixSlider.setBounds(area.removeFromTop(height));
 }
