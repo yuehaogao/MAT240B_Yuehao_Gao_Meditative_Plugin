@@ -20,9 +20,15 @@ class AudioPluginAudioProcessorEditor final
   AudioPluginAudioProcessor& processorRef;
   juce::Slider gainSlider;
   juce::Slider frequencySlider;
-  juce::Slider distortionSlider;
-  juce::Slider rateSlider;
+  //   juce::Slider distortionSlider;
+  //   juce::Slider rateSlider;
   juce::Slider chordRateSlider;
+
+  juce::Slider sineMixSlider;
+  juce::Slider sawMixSlider;
+  juce::Slider triMixSlider;
+
+
   std::vector<
       std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>>
       attachment;
