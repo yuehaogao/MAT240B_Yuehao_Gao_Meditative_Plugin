@@ -1,4 +1,5 @@
 #include "AdditiveSynth.h"
+#include <stdio.h>
 
 // Constructor
 AdditiveSynth::AdditiveSynth() {
@@ -47,15 +48,17 @@ float AdditiveSynth::process(float sampleRate) {
         if (h.phase >= 1.0f) h.phase -= 1.0f;
 
         float modulatedFreq = h.frequency * (1.0f + lfo);
-        float phaseVal = h.phase * juce::MathConstants<float>::twoPi * modulatedFreq;
+        float harmonicPhase = h.phase;
+        h.phase += modulatedFreq / sampleRate;
+        if (h.phase >= 1.0f) h.phase -= 1.0f;
+        
+        float sineWave = std::sin(h.phase * juce::MathConstants<float>::twoPi);
+        float sawWave = 2.0f * (h.phase - std::floor(h.phase + 0.5f));
+        float triWave = std::abs(4.0f * (h.phase - std::floor(h.phase + 0.5f)) - 1.0f);
 
-        // 🎛 Generate Different Waveforms
-        float sineWave = std::sin(phaseVal);
-        float sawWave = 2.0f * (h.phase - std::floor(h.phase + 0.5f));  // Sawtooth
-        float triWave = std::abs(4.0f * (h.phase - std::floor(h.phase + 0.5f)) - 1.0f);  // Triangle
 
         // 🏗️ Improved Mixing Strategy
-        // float mixedWave = (0.3f * sineWave) + (0.5f * sawWave) + (0.2f * triWave);
+        //float mixedWave = (0.3f * sineWave) + (0.5f * sawWave) + (0.2f * triWave);
         float mixedWave = (sineMix * 0.33 * sineWave) + (sawMix * 0.33 * sawWave) + (triMix * 0.33 * triWave);
 
         sample += mixedWave * h.amplitude;
@@ -70,7 +73,13 @@ float AdditiveSynth::process(float sampleRate) {
     // ✅ Apply Low-Pass Filter (Ensure Smoother Sound)
     sample = lowPassFilter.processSample(0, sample);
 
-    sample *= 9.0f;
+    
+    
+
+    sample *= 3.0f;
+
+    
+    //std::cout << sample << std::endl;
 
     if (sample >= 1.0) {
         sample = 1.0;
@@ -78,6 +87,8 @@ float AdditiveSynth::process(float sampleRate) {
     if (sample <= -1.0) {
         sample = -1.0;
     }
+
+ 
 
     return sample;
 }
@@ -89,17 +100,13 @@ void AdditiveSynth::setMixingRatios(float sine, float saw, float tri) {
     triMix = tri;
 }
 
+void AdditiveSynth::setFilterCutoff(float cutoff) {
+    filterCutoff = cutoff;
+    lowPassFilter.setCutoffFrequency(filterCutoff);
+}
+
+void AdditiveSynth::setLfoDepth(float depth) {
+    lfoDepth = depth;
+}
 
 
-
-// // Process audio (generate next sample)
-// float AdditiveSynth::process(float sampleRate) {
-//     float sample = 0.0f;
-//     for (auto& h : harmonics) {
-//         sample += std::sin(phase * juce::MathConstants<float>::twoPi * h.frequency) * h.amplitude;
-//     }
-//     phase += 1.0f / sampleRate;
-//     if (phase >= 1.0f) phase -= 1.0f;
-
-//     return sample * adsr.getNextSample(); // Apply ADSR envelope
-// }
