@@ -9,13 +9,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameters() {
       ParameterID{"gain", 1}, "Gain", -60.0, 0.0, -60.0));  
 
   parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
-      ParameterID{"frequency", 1}, "Frequency", 0.0, 127.0, 60.0));
-
-  // parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
-  //     ParameterID{"distortion", 1}, "Distortion", 0.0, 1.0, 0.0));
-
-  // parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
-  //     ParameterID{"rate", 1}, "Rate", 0.0, 1.0, 0.0));
+      ParameterID{"frequency", 1}, "Frequency", 0.75, 1.25, 1.0));
 
   parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(     // using
       ParameterID{"chordRate", 1}, "Chord Change Rate", 3.0f, 9.0f, 5.0f));
@@ -28,6 +22,23 @@ juce::AudioProcessorValueTreeState::ParameterLayout parameters() {
     
   parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
         ParameterID{"triMix", 1}, "Tri Mix", 0.0f, 1.0f, 0.2f));
+  
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+        ParameterID{"cutoff", 1}, "Cutoff Frequency", 100.0f, 10000.0f, 2000.0f));
+  
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+        ParameterID{"lfoDepth", 1}, "LFO Depth", 0.0f, 1.0f, 0.2f));
+
+  parameter_list.push_back(std::make_unique<juce::AudioParameterFloat>(
+        ParameterID{"reverbMix", 1}, "Reverb Mix", 0.0f, 1.0f, 0.5f));
+  
+  parameter_list.push_back(std::make_unique<juce::AudioParameterChoice>(
+        ParameterID{"irChoice", 1}, "IR Choice",
+        juce::StringArray{"Church", "Cave", "Room"},
+        0  // Default to Church
+  ));
+  
+
 
   return {parameter_list.begin(), parameter_list.end()};
 }
@@ -105,26 +116,56 @@ void AudioPluginAudioProcessor::changeProgramName(int index,
 void AudioPluginAudioProcessor::prepareToPlay(double sampleRate,
                                               int samplesPerBlock) {
   // Use this method as the place to do any pre-playback
-  // initialisation that you need..
-  juce::ignoreUnused(sampleRate, samplesPerBlock);
 
-  ky::setPlaybackRate(static_cast<float>(getSampleRate()));
+  ky::setPlaybackRate(static_cast<float>(sampleRate));
 
-  // Configure convolution reverb (keep this if needed)
-  convolution.reset();
+  // ✅ Prepare convolution reverb
   juce::dsp::ProcessSpec spec;
   spec.sampleRate = sampleRate;
   spec.maximumBlockSize = samplesPerBlock;
   spec.numChannels = getTotalNumOutputChannels();
+
+  convolution.reset();
   convolution.prepare(spec);
 
-  // 🎵 Initialize the Additive Synth to play an A2 pentatonic chord
-  synth.setPentatonicChord(220.0f); // A2 = 220 Hz
+  // ✅ Load user-selected IR from dropdown
+  loadSelectedImpulseResponse();  // 🪄 This is your new function that uses irChoice
+
+  // ✅ Reset synth
+  synth.setPentatonicChord(220.0f); // A2 pentatonic to start
   chordChangeTimer = 0;
 
-  // reverb.configure();
 
+  // initialisation that you need..
+  // juce::ignoreUnused(sampleRate, samplesPerBlock);
+
+  // ky::setPlaybackRate(static_cast<float>(getSampleRate()));
+
+  // // Configure convolution reverb (keep this if needed)
   // convolution.reset();
+  // juce::dsp::ProcessSpec spec;
+  // spec.sampleRate = sampleRate;
+  // spec.maximumBlockSize = samplesPerBlock;
+  // spec.numChannels = getTotalNumOutputChannels();
+  // convolution.prepare(spec);
+
+  // // 🎵 Load your impulse response file
+  // juce::File irFile = juce::File::getSpecialLocation(juce::File::userDesktopDirectory)
+  // .getChildFile("church_ir.wav");
+
+  // if (!irFile.existsAsFile()) {
+  //   DBG("❌ IR file not found! Please check path.");
+  // } else {
+  //   convolution.loadImpulseResponse(irFile,
+  //     juce::dsp::Convolution::Stereo::yes,
+  //     juce::dsp::Convolution::Trim::no,
+  //     0);  // zero latency
+  //   DBG("✅ IR file loaded successfully.");
+  // }
+
+  
+
+
 
   //Uncomment this part later, since the file "untitled.wav" is currently not there
 
@@ -192,23 +233,27 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     buffer.clear(i, 0, buffer.getNumSamples());
 
   
-  float gainValue = apvts.getParameter("gain")->getValue();                // using
-  float f = apvts.getParameter("frequency")->getValue();
-  // float t = apvts.getParameter("distortion")->getValue();
-  // float r = apvts.getParameter("rate")->getValue();  
-  float chordChangingRate = apvts.getParameter("chordRate")->getValue();   // using
+  float gainValue = apvts.getParameter("gain")->getValue();
+  float freq = apvts.getParameter("frequency")->getValue();
+  float chordChangingRate = apvts.getParameter("chordRate")->getValue();
   float sineMix = apvts.getParameter("sineMix")->getValue();
   float sawMix = apvts.getParameter("sawMix")->getValue();
   float triMix = apvts.getParameter("triMix")->getValue();
+  float cutoff = apvts.getParameter("cutoff")->getValue();
+  float lfoDepth = *apvts.getRawParameterValue("lfoDepth");
+  float reverbMix = apvts.getParameter("reverbMix")->getValue();
+
 
   synth.setMixingRatios(sineMix, sawMix, triMix);
+  synth.setFilterCutoff(cutoff * 9500 + 500);
+  synth.setLfoDepth(lfoDepth * 0.05);
   
 
   // auto thing = this->buffer.exchange(nullptr, std::memory_order_acq_rel);
 
   // ramp.frequency(ky::mtof(f * 127));
   //timer.frequency(7 * r);
-  ramp.frequency(0.3f);
+  // ramp.frequency(0.3f);
 
   // 🎚️ Get user-defined chord change rate from slider
   chordChangeInterval = chordChangingRate + 0.5; 
@@ -225,13 +270,13 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
       // Set the new chord based on index
       if (currentChordIndex == 0) {
-          synth.setPentatonicChord(220.0f); // A2 pentatonic
+          synth.setPentatonicChord(110.0f * (0.75 + 0.5 * freq)); // A2 pentatonic
       } else if (currentChordIndex == 1) {
-          synth.setPentatonicChord(164.8f); // E2 pentatonic
+          synth.setPentatonicChord(82.4f * (0.75 + 0.5 * freq)); // E2 pentatonic
       } else if (currentChordIndex == 2) {
-          synth.setPentatonicChord(146.8f); // D2 pentatonic
+          synth.setPentatonicChord(73.4f * (0.75 + 0.5 * freq)); // D2 pentatonic
       } else {
-          synth.setPentatonicChord(196.0f); // G2 pentatonic
+          synth.setPentatonicChord(98.0f * (0.75 + 0.5 * freq)); // G2 pentatonic
       }
   }
 
@@ -241,16 +286,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
   auto* rightChannel = buffer.getWritePointer(1);
   
   for (int i = 0; i < buffer.getNumSamples(); ++i) {
-    // if (timer()) {
-    //   env.set(0.05f, 0.3f);
-    // }
-    // float sample = env() * ky::sin7(ramp()) * ky::dbtoa(-60 * (1 - v));
-    //  sample = reverb(sample);
 
-    // float sample = player ? player->operator()(ramp()) : 0;
-
-    // buffer.addSample(0, i, sample);
-    // buffer.addSample(1, i, sample);
     float sample = synth.process(getSampleRate());
     // ✅ Apply gain (volume control)
     
@@ -262,11 +298,23 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     rightChannel[i] = sample;
   }
 
+  // Store dry buffer first (before reverb)
+  juce::AudioBuffer<float> dryBuffer;
+  dryBuffer.makeCopyOf(buffer);
+
   // ✅ Keep Convolution Reverb (if active)
   juce::dsp::AudioBlock<float> block(buffer);
   juce::dsp::ProcessContextReplacing<float> context(block);
   convolution.process(context);
 
+  // Now blend dry and wet buffers
+  for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
+    float* wet = buffer.getWritePointer(channel);
+    float* dry = dryBuffer.getWritePointer(channel);
+    for (int i = 0; i < buffer.getNumSamples(); ++i) {
+        wet[i] = (1.0f - reverbMix) * dry[i] + reverbMix * wet[i];
+    }
+  }
 }
 
 void AudioPluginAudioProcessor::setBuffer(
@@ -309,6 +357,35 @@ void AudioPluginAudioProcessor::setStateInformation(const void* data,
     if (xmlState->hasTagName(apvts.state.getType()))
       apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
 }
+
+void AudioPluginAudioProcessor::loadSelectedImpulseResponse() {
+  int selectedIR = static_cast<int>(*apvts.getRawParameterValue("irChoice"));
+
+  if (selectedIR == lastLoadedIR)
+      return;  // Skip if already loaded
+
+  juce::File irFile;
+  auto desktop = juce::File::getSpecialLocation(juce::File::userDesktopDirectory);
+
+  if (selectedIR == 0)
+      irFile = desktop.getChildFile("church_ir.wav");
+  else if (selectedIR == 0.5)
+      irFile = desktop.getChildFile("cave_ir.wav");
+  else if (selectedIR == 1)
+      irFile = desktop.getChildFile("room_ir.wav");
+
+  if (irFile.existsAsFile()) {
+      convolution.loadImpulseResponse(irFile,
+          juce::dsp::Convolution::Stereo::yes,
+          juce::dsp::Convolution::Trim::no,
+          0);
+      lastLoadedIR = selectedIR;
+      std::cout << "Loaded IR: " << irFile.getFileName() << std::endl;
+  } else {
+      std::cout << "IR file not found: " << irFile.getFullPathName() << std::endl;
+  }
+}
+
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() {
   return new AudioPluginAudioProcessor();
