@@ -13,6 +13,8 @@ class AdditiveSynth {
         float process(float sampleRate);
         void initializeADSR(); // Add this function to initialize ADSR
         void setMixingRatios(float sine, float saw, float tri);
+        void setFilterCutoff(float cutoff);
+        void setLfoDepth(float depth);
     
     private:
         struct Harmonic {
@@ -38,51 +40,8 @@ class AdditiveSynth {
         float sineMix = 0.3f;
         float sawMix = 0.5f;
         float triMix = 0.2f;
+
+        float filterCutoff = 2000.0f;
 };
 
-/*
-class AdditiveSynth {
-public:
-    struct Harmonic {
-        float frequency;
-        float amplitude;
-        float phase;
-    };
 
-    std::vector<Harmonic> harmonics;
-
-
-    // THE PENTATONIC SCALE
-    void setPentatonicChord(float baseFreq) {
-        harmonics.clear();
-        float ratios[] = {1.0f, // I
-            9.0/8.0f,           // II
-            5.0f/4.0f,          // III
-            3.0f/2.0f,          // V
-            5.0f/3.0f,          // VI
-            2.0f};              // I (Octave Higher)
-            // Pentatonic
-
-        for (float r : ratios) {
-            float detuneFactor = 1.0f + (juce::Random::getSystemRandom().nextFloat() * 0.02f - 0.01f); // ±1% detune
-            harmonics.push_back({baseFreq * r * detuneFactor, 0.2f, 0.0f});
-        }
-    }
-
-    float process(float sampleRate) {
-        float sample = 0;
-        for (auto& osc : harmonics) {
-            osc.phase += osc.frequency / sampleRate;
-            if (osc.phase >= 1.0f) osc.phase -= 1.0f;
-            sample += std::sin(osc.phase * 2.0f * juce::MathConstants<float>::pi) * osc.amplitude;
-        }
-        return sample;
-    }
-
-private:
-    juce::ADSR adsr; // Envelope generator
-    juce::ADSR::Parameters adsrParams;
-
-};
-
-*/
