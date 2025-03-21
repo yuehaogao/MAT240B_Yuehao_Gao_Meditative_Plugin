@@ -4,7 +4,7 @@
 
 //==============================================================================
 class AudioPluginAudioProcessorEditor final
-    : public juce::AudioProcessorEditor {
+    : public juce::AudioProcessorEditor, private juce::Timer {
  public:
   explicit AudioPluginAudioProcessorEditor(AudioPluginAudioProcessor&);
   ~AudioPluginAudioProcessorEditor() override;
@@ -20,18 +20,29 @@ class AudioPluginAudioProcessorEditor final
   AudioPluginAudioProcessor& processorRef;
   juce::Slider gainSlider;
   juce::Slider frequencySlider;
-  //   juce::Slider distortionSlider;
-  //   juce::Slider rateSlider;
   juce::Slider chordRateSlider;
-
   juce::Slider sineMixSlider;
   juce::Slider sawMixSlider;
   juce::Slider triMixSlider;
+  juce::Slider cutoffSlider;
+  juce::Slider lfoDepthSlider;
+  juce::Slider reverbMixSlider;
+  juce::ComboBox irSelectBox;
+
+  juce::Image churchImage, caveImage, roomImage;
+  juce::ImageComponent imageDisplay;
+
+  void timerCallback() override;
 
 
   std::vector<
       std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>>
       attachment;
+  std::vector<
+      std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> 
+      buttonAttachments;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> irAttachment;
+    
 
   juce::TextButton openButton;
   std::unique_ptr<juce::FileChooser> chooser;
