@@ -138,8 +138,6 @@ void AudioPluginAudioProcessorEditor::timerCallback()
     // 👇 Example: switch the displayed image based on IR selection
     auto irChoice = processorRef.apvts.getParameter("irChoice")->getValue(); // 0, 1, or 2
 
-    std::cout << irChoice << std::endl;
-
     if (irChoice == 0)
         imageDisplay.setImage(churchImage, juce::RectanglePlacement::centred);
     else if (irChoice == 0.5)
