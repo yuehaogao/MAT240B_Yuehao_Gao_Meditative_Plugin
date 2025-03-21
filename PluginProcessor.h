@@ -59,6 +59,10 @@ class AudioPluginAudioProcessor final : public juce::AudioProcessor {
   std::unique_ptr<ky::ClipPlayer> player;
   juce::dsp::Convolution convolution;
 
+  void loadSelectedImpulseResponse();
+  int lastLoadedIR = -1;
+  
+
   AdditiveSynth synth;
   int currentChordIndex = 0;  // Keeps track of which chord is playing
   float chordChangeTimer = 0; // Timer to track when to switch chords
